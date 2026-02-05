@@ -31,15 +31,12 @@ When you learn something important:
 - Add recurring context directly to this CLAUDE.md
 - Always index new memory files at the top of CLAUDE.md
 
-## WhatsApp Formatting
+## Discord Formatting
 
-Do NOT use markdown headings (##) in WhatsApp messages. Only use:
-- *Bold* (asterisks)
-- _Italic_ (underscores)
-- • Bullets (bullet points)
-- ```Code blocks``` (triple backticks)
-
-Keep messages clean and readable for WhatsApp.
+Discord supports Markdown. Keep messages concise and readable:
+- Prefer short paragraphs and bullet lists
+- Use code blocks for commands/snippets
+- Avoid huge walls of text
 
 ---
 
@@ -73,8 +70,8 @@ Available groups are provided in `/workspace/ipc/available_groups.json`:
 {
   "groups": [
     {
-      "jid": "120363336345536173@g.us",
-      "name": "Family Chat",
+      "jid": "123456789012345678",
+      "name": "#family-chat (My Server)",
       "lastActivity": "2026-01-31T12:00:00.000Z",
       "isRegistered": false
     }
@@ -83,7 +80,7 @@ Available groups are provided in `/workspace/ipc/available_groups.json`:
 }
 ```
 
-Groups are ordered by most recent activity. The list is synced from WhatsApp daily.
+Groups are ordered by most recent activity. The list is synced from Discord daily.
 
 If a group the user mentions isn't in the list, request a fresh sync:
 
@@ -99,7 +96,7 @@ Then wait a moment and re-read `available_groups.json`.
 sqlite3 /workspace/project/store/messages.db "
   SELECT jid, name, last_message_time
   FROM chats
-  WHERE jid LIKE '%@g.us' AND jid != '__group_sync__'
+  WHERE jid != '__group_sync__'
   ORDER BY last_message_time DESC
   LIMIT 10;
 "
@@ -111,7 +108,7 @@ Groups are registered in `/workspace/project/data/registered_groups.json`:
 
 ```json
 {
-  "1234567890-1234567890@g.us": {
+  "123456789012345678": {
     "name": "Family Chat",
     "folder": "family-chat",
     "trigger": "@Andy",
@@ -121,7 +118,7 @@ Groups are registered in `/workspace/project/data/registered_groups.json`:
 ```
 
 Fields:
-- **Key**: The WhatsApp JID (unique identifier for the chat)
+- **Key**: The Discord channel ID (unique identifier for the chat)
 - **name**: Display name for the group
 - **folder**: Folder name under `groups/` for this group's files and memory
 - **trigger**: The trigger word (usually same as global, but could differ)
@@ -129,7 +126,7 @@ Fields:
 
 ### Adding a Group
 
-1. Query the database to find the group's JID
+1. Query the database to find the channel ID
 2. Read `/workspace/project/data/registered_groups.json`
 3. Add the new group entry with `containerConfig` if needed
 4. Write the updated JSON back
@@ -147,7 +144,7 @@ Groups can have extra directories mounted. Add `containerConfig` to their entry:
 
 ```json
 {
-  "1234567890@g.us": {
+  "123456789012345678": {
     "name": "Dev Team",
     "folder": "dev-team",
     "trigger": "@Andy",

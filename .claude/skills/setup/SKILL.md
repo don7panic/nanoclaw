@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Run initial NanoClaw setup. Use when user wants to install dependencies, authenticate WhatsApp, register their main channel, or start the background services. Triggers on "setup", "install", "configure nanoclaw", or first-time setup requests.
+description: Run initial NanoClaw setup. Use when user wants to install dependencies, authenticate Discord, register their main channel, or start the background services. Triggers on "setup", "install", "configure nanoclaw", or first-time setup requests.
 ---
 
 # NanoClaw Setup
@@ -137,25 +137,32 @@ else
 fi
 ```
 
-## 5. WhatsApp Authentication
+## 5. Discord Bot Authentication
 
 **USER ACTION REQUIRED**
 
-Run the authentication script:
+Ask the user if they already have a Discord bot token.
+
+If **no**, tell them:
+> Create a Discord application + bot:
+> 1. Go to the Discord Developer Portal
+> 2. Create a new application → add a **Bot**
+> 3. Copy the bot token
+> 4. Enable **Message Content Intent**
+> 5. Invite the bot to your server with **View Channels**, **Read Message History**, and **Send Messages**
+
+If **yes**, ask for the token.
+
+Then store it in `.env`:
 
 ```bash
-npm run auth
+echo "DISCORD_BOT_TOKEN=<token>" > .env
 ```
 
-Tell the user:
-> A QR code will appear. On your phone:
-> 1. Open WhatsApp
-> 2. Tap **Settings → Linked Devices → Link a Device**
-> 3. Scan the QR code
-
-Wait for the script to output "Successfully authenticated" then continue.
-
-If it says "Already authenticated", skip to the next step.
+Optionally, if they want to generate invite links later, add:
+```
+DISCORD_APP_ID=<application id>
+```
 
 ## 6. Configure Assistant Name
 
@@ -185,14 +192,14 @@ Before registering your main channel, you need to understand an important securi
 > - Can write to global memory that all groups can read
 > - Has read-write access to the entire NanoClaw project
 >
-> **Recommendation:** Use your personal "Message Yourself" chat or a solo WhatsApp group as your main channel. This ensures only you have admin control.
+> **Recommendation:** Use a personal DM with the bot or a private admin-only channel as your main channel. This ensures only you have admin control.
 >
 > **Question:** Which setup will you use for your main channel?
 >
 > Options:
-> 1. Personal chat (Message Yourself) - Recommended
-> 2. Solo WhatsApp group (just me)
-> 3. Group with other people (I understand the security implications)
+> 1. Personal DM with the bot - Recommended
+> 2. Private admin-only channel
+> 3. Shared channel with other people (I understand the security implications)
 
 If they choose option 3, ask a follow-up:
 
@@ -210,13 +217,13 @@ If they choose option 3, ask a follow-up:
 ## 8. Register Main Channel
 
 Ask the user:
-> Do you want to use your **personal chat** (message yourself) or a **WhatsApp group** as your main control channel?
+> Do you want to use a **personal DM** with the bot or a **server channel** as your main control channel?
 
-For personal chat:
-> Send any message to yourself in WhatsApp (the "Message Yourself" chat). Tell me when done.
+For personal DM:
+> Send any message to the bot in a DM. Tell me when done.
 
-For group:
-> Send any message in the WhatsApp group you want to use as your main channel. Tell me when done.
+For server channel:
+> Send any message in the Discord channel you want to use as your main channel. Tell me when done.
 
 After user confirms, start the app briefly to capture the message:
 
@@ -224,20 +231,16 @@ After user confirms, start the app briefly to capture the message:
 timeout 10 npm run dev || true
 ```
 
-Then find the JID from the database:
+Then find the channel ID from the database:
 
 ```bash
-# For personal chat (ends with @s.whatsapp.net)
-sqlite3 store/messages.db "SELECT DISTINCT chat_jid FROM messages WHERE chat_jid LIKE '%@s.whatsapp.net' ORDER BY timestamp DESC LIMIT 5"
-
-# For group (ends with @g.us)
-sqlite3 store/messages.db "SELECT DISTINCT chat_jid FROM messages WHERE chat_jid LIKE '%@g.us' ORDER BY timestamp DESC LIMIT 5"
+sqlite3 store/messages.db "SELECT DISTINCT chat_jid FROM messages ORDER BY timestamp DESC LIMIT 10"
 ```
 
-Create/update `data/registered_groups.json` using the JID from above and the assistant name from step 5:
+Create/update `data/registered_groups.json` using the channel ID from above and the assistant name from step 5:
 ```json
 {
-  "JID_HERE": {
+  "CHANNEL_ID_HERE": {
     "name": "main",
     "folder": "main",
     "trigger": "@ASSISTANT_NAME",
@@ -298,7 +301,7 @@ For each directory they provide, ask:
 ### 9b. Configure Non-Main Group Access
 
 Ask the user:
-> Should **non-main groups** (other WhatsApp chats you add later) be restricted to **read-only** access even if read-write is allowed for the directory?
+> Should **non-main groups** (other Discord channels you add later) be restricted to **read-only** access even if read-write is allowed for the directory?
 >
 > Recommended: **Yes** - this prevents other groups from modifying files even if you grant them access to a directory.
 
@@ -428,7 +431,7 @@ Check the logs:
 tail -f logs/nanoclaw.log
 ```
 
-The user should receive a response in WhatsApp.
+The user should receive a response in Discord.
 
 ## Troubleshooting
 
@@ -442,12 +445,12 @@ The user should receive a response in WhatsApp.
 
 **No response to messages**:
 - Verify the trigger pattern matches (e.g., `@AssistantName` at start of message)
-- Check that the chat JID is in `data/registered_groups.json`
+- Check that the channel ID is in `data/registered_groups.json`
 - Check `logs/nanoclaw.log` for errors
 
-**WhatsApp disconnected**:
-- The service will show a macOS notification
-- Run `npm run auth` to re-authenticate
+**Discord authentication failed**:
+- Verify `DISCORD_BOT_TOKEN` is correct
+- Ensure the bot is invited to the server/channel
 - Restart the service: `launchctl kickstart -k gui/$(id -u)/com.nanoclaw`
 
 **Unload service**:

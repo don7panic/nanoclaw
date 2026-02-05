@@ -1,13 +1,8 @@
-import { exec, execSync } from 'child_process';
+import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-import makeWASocket, {
-  DisconnectReason,
-  WASocket,
-  makeCacheableSignalKeyStore,
-  useMultiFileAuthState,
-} from '@whiskeysockets/baileys';
+import { Client, GatewayIntentBits, Partials } from 'discord.js';
 
 import {
   ASSISTANT_NAME,
@@ -15,7 +10,6 @@ import {
   IPC_POLL_INTERVAL,
   MAIN_GROUP_FOLDER,
   POLL_INTERVAL,
-  STORE_DIR,
   TIMEZONE,
   TRIGGER_PATTERN,
 } from './config.js';
@@ -45,38 +39,24 @@ import { logger } from './logger.js';
 
 const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-let sock: WASocket;
+let client: Client;
 let lastTimestamp = '';
 let sessions: Session = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
 let lastAgentTimestamp: Record<string, string> = {};
-// LID to phone number mapping (WhatsApp now sends LID JIDs for self-chats)
-let lidToPhoneMap: Record<string, string> = {};
-// Guards to prevent duplicate loops on WhatsApp reconnect
+// Guards to prevent duplicate loops on reconnect
 let messageLoopRunning = false;
 let ipcWatcherRunning = false;
 let groupSyncTimerStarted = false;
 
-/**
- * Translate a JID from LID format to phone format if we have a mapping.
- * Returns the original JID if no mapping exists.
- */
-function translateJid(jid: string): string {
-  if (!jid.endsWith('@lid')) return jid;
-  const lidUser = jid.split('@')[0].split(':')[0];
-  const phoneJid = lidToPhoneMap[lidUser];
-  if (phoneJid) {
-    logger.debug({ lidJid: jid, phoneJid }, 'Translated LID to phone JID');
-    return phoneJid;
-  }
-  return jid;
-}
-
-async function setTyping(jid: string, isTyping: boolean): Promise<void> {
+async function setTyping(channelId: string, isTyping: boolean): Promise<void> {
+  if (!isTyping) return;
   try {
-    await sock.sendPresenceUpdate(isTyping ? 'composing' : 'paused', jid);
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased()) return;
+    await channel.sendTyping();
   } catch (err) {
-    logger.debug({ jid, err }, 'Failed to update typing status');
+    logger.debug({ channelId, err }, 'Failed to send typing indicator');
   }
 }
 
@@ -98,6 +78,7 @@ function loadState(): void {
     'State loaded',
   );
 }
+
 
 function saveState(): void {
   saveJson(path.join(DATA_DIR, 'router_state.json'), {
@@ -121,12 +102,26 @@ function registerGroup(jid: string, group: RegisteredGroup): void {
   );
 }
 
+function formatChannelName(channel: any): string {
+  if (channel?.isDMBased?.()) {
+    const recipient = channel.recipient?.username || channel.recipient?.tag;
+    return recipient ? `DM: ${recipient}` : 'DM';
+  }
+
+  if (channel?.guild?.name && channel?.name) {
+    return `#${channel.name} (${channel.guild.name})`;
+  }
+
+  if (channel?.name) return channel.name;
+  return channel?.id || 'Unknown';
+}
+
 /**
- * Sync group metadata from WhatsApp.
- * Fetches all participating groups and stores their names in the database.
+ * Sync channel metadata from Discord.
+ * Fetches visible text channels and stores their names in the database.
  * Called on startup, daily, and on-demand via IPC.
  */
-async function syncGroupMetadata(force = false): Promise<void> {
+async function syncChannelMetadata(force = false): Promise<void> {
   // Check if we need to sync (skip if synced recently, unless forced)
   if (!force) {
     const lastSync = getLastGroupSync();
@@ -141,34 +136,44 @@ async function syncGroupMetadata(force = false): Promise<void> {
   }
 
   try {
-    logger.info('Syncing group metadata from WhatsApp...');
-    const groups = await sock.groupFetchAllParticipating();
-
+    logger.info('Syncing channel metadata from Discord...');
     let count = 0;
-    for (const [jid, metadata] of Object.entries(groups)) {
-      if (metadata.subject) {
-        updateChatName(jid, metadata.subject);
+    for (const guild of client.guilds.cache.values()) {
+      let channels;
+      try {
+        channels = await guild.channels.fetch();
+      } catch (err) {
+        logger.warn(
+          { err, guild: guild.name },
+          'Failed to fetch guild channels',
+        );
+        continue;
+      }
+
+      for (const channel of channels.values()) {
+        if (!channel || !channel.isTextBased()) continue;
+        updateChatName(channel.id, formatChannelName(channel));
         count++;
       }
     }
 
     setLastGroupSync();
-    logger.info({ count }, 'Group metadata synced');
+    logger.info({ count }, 'Channel metadata synced');
   } catch (err) {
-    logger.error({ err }, 'Failed to sync group metadata');
+    logger.error({ err }, 'Failed to sync channel metadata');
   }
 }
 
 /**
- * Get available groups list for the agent.
- * Returns groups ordered by most recent activity.
+ * Get available channels list for the agent.
+ * Returns channels ordered by most recent activity.
  */
 function getAvailableGroups(): AvailableGroup[] {
   const chats = getAllChats();
   const registeredJids = new Set(Object.keys(registeredGroups));
 
   return chats
-    .filter((c) => c.jid !== '__group_sync__' && c.jid.endsWith('@g.us'))
+    .filter((c) => c.jid !== '__group_sync__')
     .map((c) => ({
       jid: c.jid,
       name: c.name,
@@ -189,11 +194,7 @@ async function processMessage(msg: NewMessage): Promise<void> {
 
   // Get all messages since last agent interaction so the session has full context
   const sinceTimestamp = lastAgentTimestamp[msg.chat_jid] || '';
-  const missedMessages = getMessagesSince(
-    msg.chat_jid,
-    sinceTimestamp,
-    ASSISTANT_NAME,
-  );
+  const missedMessages = getMessagesSince(msg.chat_jid, sinceTimestamp);
 
   const lines = missedMessages.map((m) => {
     // Escape XML special characters in content
@@ -220,7 +221,7 @@ async function processMessage(msg: NewMessage): Promise<void> {
 
   if (response) {
     lastAgentTimestamp[msg.chat_jid] = msg.timestamp;
-    await sendMessage(msg.chat_jid, `${ASSISTANT_NAME}: ${response}`);
+    await sendMessage(msg.chat_jid, response);
   }
 }
 
@@ -286,12 +287,17 @@ async function runAgent(
   }
 }
 
-async function sendMessage(jid: string, text: string): Promise<void> {
+async function sendMessage(channelId: string, text: string): Promise<void> {
   try {
-    await sock.sendMessage(jid, { text });
-    logger.info({ jid, length: text.length }, 'Message sent');
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased()) {
+      logger.warn({ channelId }, 'Channel not found or not text-based');
+      return;
+    }
+    await channel.send({ content: text });
+    logger.info({ channelId, length: text.length }, 'Message sent');
   } catch (err) {
-    logger.error({ jid, err }, 'Failed to send message');
+    logger.error({ channelId, err }, 'Failed to send message');
   }
 }
 
@@ -598,9 +604,9 @@ async function processTaskIpc(
       if (isMain) {
         logger.info(
           { sourceGroup },
-          'Group metadata refresh requested via IPC',
+          'Channel metadata refresh requested via IPC',
         );
-        await syncGroupMetadata(true);
+        await syncChannelMetadata(true);
         // Write updated snapshot immediately
         const availableGroups = getAvailableGroups();
         const { writeGroupsSnapshot: writeGroups } =
@@ -649,112 +655,102 @@ async function processTaskIpc(
   }
 }
 
-async function connectWhatsApp(): Promise<void> {
-  const authDir = path.join(STORE_DIR, 'auth');
-  fs.mkdirSync(authDir, { recursive: true });
+function extractMessageContent(message: any): string {
+  const content = message.content?.trim();
+  if (content) return content;
 
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+  if (message.attachments?.size) {
+    const urls = Array.from(message.attachments.values())
+      .map((attachment: any) => attachment.url)
+      .filter(Boolean);
+    if (urls.length > 0) return `[attachment] ${urls.join(' ')}`;
+  }
 
-  sock = makeWASocket({
-    auth: {
-      creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, logger),
-    },
-    printQRInTerminal: false,
-    logger,
-    browser: ['NanoClaw', 'Chrome', '1.0.0'],
+  return '[non-text message]';
+}
+
+async function connectDiscord(): Promise<void> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) {
+    logger.error(
+      'Missing DISCORD_BOT_TOKEN. Add it to your environment or .env file.',
+    );
+    process.exit(1);
+  }
+
+  client = new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.DirectMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+    partials: [Partials.Channel],
   });
 
-  sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect, qr } = update;
+  client.once('ready', () => {
+    logger.info(
+      { user: client.user?.tag || client.user?.id },
+      'Connected to Discord',
+    );
 
-    if (qr) {
-      const msg =
-        'WhatsApp authentication required. Run /setup in Claude Code.';
-      logger.error(msg);
-      exec(
-        `osascript -e 'display notification "${msg}" with title "NanoClaw" sound name "Basso"'`,
-      );
-      setTimeout(() => process.exit(1), 1000);
-    }
-
-    if (connection === 'close') {
-      const reason = (lastDisconnect?.error as any)?.output?.statusCode;
-      const shouldReconnect = reason !== DisconnectReason.loggedOut;
-      logger.info({ reason, shouldReconnect }, 'Connection closed');
-
-      if (shouldReconnect) {
-        logger.info('Reconnecting...');
-        connectWhatsApp();
-      } else {
-        logger.info('Logged out. Run /setup to re-authenticate.');
-        process.exit(0);
-      }
-    } else if (connection === 'open') {
-      logger.info('Connected to WhatsApp');
-      
-      // Build LID to phone mapping from auth state for self-chat translation
-      if (sock.user) {
-        const phoneUser = sock.user.id.split(':')[0];
-        const lidUser = sock.user.lid?.split(':')[0];
-        if (lidUser && phoneUser) {
-          lidToPhoneMap[lidUser] = `${phoneUser}@s.whatsapp.net`;
-          logger.debug({ lidUser, phoneUser }, 'LID to phone mapping set');
-        }
-      }
-      
-      // Sync group metadata on startup (respects 24h cache)
-      syncGroupMetadata().catch((err) =>
-        logger.error({ err }, 'Initial group sync failed'),
-      );
-      // Set up daily sync timer (only once)
-      if (!groupSyncTimerStarted) {
-        groupSyncTimerStarted = true;
-        setInterval(() => {
-          syncGroupMetadata().catch((err) =>
-            logger.error({ err }, 'Periodic group sync failed'),
-          );
-        }, GROUP_SYNC_INTERVAL_MS);
-      }
-      startSchedulerLoop({
-        sendMessage,
-        registeredGroups: () => registeredGroups,
-        getSessions: () => sessions,
-      });
-      startIpcWatcher();
-      startMessageLoop();
-    }
-  });
-
-  sock.ev.on('creds.update', saveCreds);
-
-  sock.ev.on('messages.upsert', ({ messages }) => {
-    for (const msg of messages) {
-      if (!msg.message) continue;
-      const rawJid = msg.key.remoteJid;
-      if (!rawJid || rawJid === 'status@broadcast') continue;
-
-      // Translate LID JID to phone JID if applicable
-      const chatJid = translateJid(rawJid);
-      
-      const timestamp = new Date(
-        Number(msg.messageTimestamp) * 1000,
-      ).toISOString();
-
-      // Always store chat metadata for group discovery
-      storeChatMetadata(chatJid, timestamp);
-
-      // Only store full message content for registered groups
-      if (registeredGroups[chatJid]) {
-        storeMessage(
-          msg,
-          chatJid,
-          msg.key.fromMe || false,
-          msg.pushName || undefined,
+    // Sync channel metadata on startup (respects 24h cache)
+    syncChannelMetadata().catch((err) =>
+      logger.error({ err }, 'Initial channel sync failed'),
+    );
+    // Set up daily sync timer (only once)
+    if (!groupSyncTimerStarted) {
+      groupSyncTimerStarted = true;
+      setInterval(() => {
+        syncChannelMetadata().catch((err) =>
+          logger.error({ err }, 'Periodic channel sync failed'),
         );
-      }
+      }, GROUP_SYNC_INTERVAL_MS);
+    }
+    startSchedulerLoop({
+      sendMessage,
+      registeredGroups: () => registeredGroups,
+      getSessions: () => sessions,
+    });
+    startIpcWatcher();
+    startMessageLoop();
+  });
+
+  client.on('messageCreate', (message) => {
+    if (!message.channelId || message.system) return;
+    if (message.author?.bot && message.author.id !== client.user?.id) return;
+
+    const channelId = message.channelId;
+    const timestamp = message.createdAt.toISOString();
+
+    // Always store channel metadata for discovery
+    storeChatMetadata(channelId, timestamp, formatChannelName(message.channel));
+
+    // Only store full message content for registered channels
+    if (registeredGroups[channelId]) {
+      const senderName =
+        message.member?.displayName || message.author?.username || 'Unknown';
+      storeMessage({
+        id: message.id,
+        chatJid: channelId,
+        sender: message.author?.id || 'unknown',
+        senderName,
+        content: extractMessageContent(message),
+        timestamp,
+        isFromMe: message.author?.id === client.user?.id,
+      });
     }
   });
+
+  client.on('error', (err) => {
+    logger.error({ err }, 'Discord client error');
+  });
+
+  client.on('warn', (warn) => {
+    logger.warn({ warn }, 'Discord client warning');
+  });
+
+  await client.login(token);
 }
 
 async function startMessageLoop(): Promise<void> {
@@ -768,7 +764,7 @@ async function startMessageLoop(): Promise<void> {
   while (true) {
     try {
       const jids = Object.keys(registeredGroups);
-      const { messages } = getNewMessages(jids, lastTimestamp, ASSISTANT_NAME);
+      const { messages } = getNewMessages(jids, lastTimestamp);
 
       if (messages.length > 0)
         logger.info({ count: messages.length }, 'New messages');
@@ -839,7 +835,7 @@ async function main(): Promise<void> {
   initDatabase();
   logger.info('Database initialized');
   loadState();
-  await connectWhatsApp();
+  await connectDiscord();
 }
 
 main().catch((err) => {
