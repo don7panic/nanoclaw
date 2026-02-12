@@ -184,17 +184,53 @@ function getAvailableGroups(): AvailableGroup[] {
 
 async function processMessage(msg: NewMessage): Promise<void> {
   const group = registeredGroups[msg.chat_jid];
-  if (!group) return;
+  if (!group) {
+    logger.debug(
+      { chatJid: msg.chat_jid, availableGroups: Object.keys(registeredGroups) },
+      'Message from unregistered group, skipping'
+    );
+    return;
+  }
 
   const content = msg.content.trim();
   const isMainGroup = group.folder === MAIN_GROUP_FOLDER;
 
+  logger.info(
+    {
+      group: group.name,
+      isMainGroup,
+      content: content.substring(0, 50),
+      matchesTrigger: TRIGGER_PATTERN.test(content),
+      triggerPattern: TRIGGER_PATTERN.source
+    },
+    'Processing message check'
+  );
+
   // Main group responds to all messages; other groups require trigger prefix
-  if (!isMainGroup && !TRIGGER_PATTERN.test(content)) return;
+  const isMentioned = msg.content.includes(`<@${client.user?.id}>`) || msg.content.includes(`<@!${client.user?.id}>`);
+  const isNameTriggered = TRIGGER_PATTERN.test(content);
+
+  if (!isMainGroup && !isMentioned && !isNameTriggered) {
+    logger.info(
+      { group: group.name, content: content.substring(0, 50) },
+      'Non-main group message without trigger prefix, skipping'
+    );
+    return;
+  }
 
   // Get all messages since last agent interaction so the session has full context
   const sinceTimestamp = lastAgentTimestamp[msg.chat_jid] || '';
   const missedMessages = getMessagesSince(msg.chat_jid, sinceTimestamp);
+
+  logger.info(
+    {
+      sinceTimestamp,
+      msgTimestamp: msg.timestamp,
+      missedCount: missedMessages.length,
+      chatJid: msg.chat_jid
+    },
+    'Message retrieval debug'
+  );
 
   const lines = missedMessages.map((m) => {
     // Escape XML special characters in content
@@ -208,7 +244,10 @@ async function processMessage(msg: NewMessage): Promise<void> {
   });
   const prompt = `<messages>\n${lines.join('\n')}\n</messages>`;
 
-  if (!prompt) return;
+  if (!prompt) {
+    logger.info('Prompt is empty (should not happen if lines > 0), skipping agent run');
+    return;
+  }
 
   logger.info(
     { group: group.name, messageCount: missedMessages.length },

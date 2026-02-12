@@ -418,6 +418,158 @@ export class SetupService extends EventEmitter {
     });
   }
 
+  // Channel management methods
+  getAllChannels(): Array<{
+    id: string;
+    name: string;
+    folder: string;
+    trigger: string;
+    mounts?: Array<{ hostPath: string; containerPath: string; readonly?: boolean }>;
+  }> {
+    const groupsPath = path.join(this.repoRoot, 'data/registered_groups.json');
+    if (!fs.existsSync(groupsPath)) {
+      return [];
+    }
+
+    try {
+      const content = fs.readFileSync(groupsPath, 'utf8');
+      const groups = JSON.parse(content) as Record<
+        string,
+        {
+          name: string;
+          folder: string;
+          trigger: string;
+          containerConfig?: { additionalMounts?: Array<{ hostPath: string; containerPath: string; readonly?: boolean }> };
+        }
+      >;
+
+      return Object.entries(groups).map(([id, data]) => ({
+        id,
+        name: data.name || 'unknown',
+        folder: data.folder || 'unknown',
+        trigger: data.trigger || '@Andy',
+        mounts: data.containerConfig?.additionalMounts || [],
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  async addChannel(payload: {
+    channelId: string;
+    name: string;
+    folder: string;
+    trigger: string
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.enqueue(async () => {
+      const { channelId, name, folder, trigger } = payload;
+
+      if (!channelId || !name || !folder) {
+        return { success: false, error: 'Channel ID, name, and folder are required' };
+      }
+
+      const groupsPath = path.join(this.repoRoot, 'data/registered_groups.json');
+      let groups: Record<string, unknown> = {};
+
+      if (fs.existsSync(groupsPath)) {
+        try {
+          groups = JSON.parse(fs.readFileSync(groupsPath, 'utf8')) as Record<string, unknown>;
+        } catch {
+          groups = {};
+        }
+      }
+
+      // Check if channel already exists
+      if (groups[channelId]) {
+        return { success: false, error: 'Channel already registered' };
+      }
+
+      groups[channelId] = {
+        name,
+        folder,
+        trigger: trigger || '@Andy',
+        added_at: nowIso(),
+      };
+
+      try {
+        fs.mkdirSync(path.dirname(groupsPath), { recursive: true });
+        fs.writeFileSync(groupsPath, `${JSON.stringify(groups, null, 2)}\n`, 'utf8');
+        fs.mkdirSync(path.join(this.repoRoot, `groups/${folder}/logs`), { recursive: true });
+
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return { success: false, error: message };
+      }
+    });
+  }
+
+  async deleteChannel(channelId: string): Promise<{ success: boolean; error?: string }> {
+    return this.enqueue(async () => {
+      const groupsPath = path.join(this.repoRoot, 'data/registered_groups.json');
+
+      if (!fs.existsSync(groupsPath)) {
+        return { success: false, error: 'No channels registered' };
+      }
+
+      try {
+        const groups = JSON.parse(fs.readFileSync(groupsPath, 'utf8')) as Record<string, unknown>;
+
+        if (!groups[channelId]) {
+          return { success: false, error: 'Channel not found' };
+        }
+
+        delete groups[channelId];
+        fs.writeFileSync(groupsPath, `${JSON.stringify(groups, null, 2)}\n`, 'utf8');
+
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return { success: false, error: message };
+      }
+    });
+  }
+
+  async updateChannelMounts(payload: {
+    channelId: string;
+    mounts: Array<{ hostPath: string; containerPath: string; readonly?: boolean }>;
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.enqueue(async () => {
+      const { channelId, mounts } = payload;
+      const groupsPath = path.join(this.repoRoot, 'data/registered_groups.json');
+
+      if (!fs.existsSync(groupsPath)) {
+        return { success: false, error: 'No channels registered' };
+      }
+
+      try {
+        const groups = JSON.parse(fs.readFileSync(groupsPath, 'utf8')) as Record<
+          string,
+          { name: string; folder: string; trigger: string; containerConfig?: { additionalMounts?: unknown[] } }
+        >;
+
+        if (!groups[channelId]) {
+          return { success: false, error: 'Channel not found' };
+        }
+
+        // Initialize containerConfig if it doesn't exist
+        if (!groups[channelId].containerConfig) {
+          groups[channelId].containerConfig = {};
+        }
+
+        // Update additionalMounts
+        groups[channelId].containerConfig!.additionalMounts = mounts;
+
+        fs.writeFileSync(groupsPath, `${JSON.stringify(groups, null, 2)}\n`, 'utf8');
+
+        return { success: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return { success: false, error: message };
+      }
+    });
+  }
+
   private loadState(): SetupState {
     if (!fs.existsSync(this.statePath)) {
       return createInitialState();

@@ -2,6 +2,9 @@ import { type Dispatch, type SetStateAction } from 'react';
 
 import { type StepDraft } from '@/features/shared/setupDraft';
 import { type SetupLogEntry, type SetupSnapshot, type SetupState, type SetupStepId } from '@/types';
+import * as React from 'react';
+
+import { RegisterMainChannelPanel } from './RegisterMainChannelPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,8 +41,8 @@ const CONFIG_TASKS: Array<{
     },
     {
       id: 'register_main_channel',
-      title: 'Register Main Channel',
-      summary: 'Select control channel for admin tasks',
+      title: 'Manage Discord Channels',
+      summary: 'Register and configure all Discord channels',
     },
     {
       id: 'mount_allowlist',
@@ -284,41 +287,11 @@ function renderTaskForm(
 
   if (taskId === 'register_main_channel') {
     return (
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="channel-id">Channel ID</Label>
-          <Input
-            id="channel-id"
-            onChange={(event) =>
-              setDraft((prev) => ({ ...prev, mainChannelId: event.target.value }))
-            }
-            placeholder="Leave blank to auto-detect latest"
-            value={draft.mainChannelId}
-          />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="channel-name">Group Name</Label>
-            <Input
-              id="channel-name"
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, mainChannelName: event.target.value }))
-              }
-              value={draft.mainChannelName}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="channel-folder">Folder Name</Label>
-            <Input
-              id="channel-folder"
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, mainChannelFolder: event.target.value }))
-              }
-              value={draft.mainChannelFolder}
-            />
-          </div>
-        </div>
-      </div>
+      <RegisterMainChannelPanel
+        snapshot={snapshot}
+        draft={draft}
+        setDraft={setDraft}
+      />
     );
   }
 
@@ -568,12 +541,12 @@ export function MainDashboardView({
               </Button>
             </div>
 
-            {selectedRuntime.blockedReason ? (
+            {selectedRuntime?.blockedReason ? (
               <div className="rounded-xl border border-warning/45 bg-warning/10 p-4">
                 <p className="text-sm font-semibold text-warning-foreground">
                   {selectedRuntime.blockedReason}
                 </p>
-                {selectedRuntime.manualCheckpoints.length > 0 ? (
+                {selectedRuntime?.manualCheckpoints?.length > 0 ? (
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-warning-foreground">
                     {selectedRuntime.manualCheckpoints.map((checkpoint) => (
                       <li key={checkpoint.id}>{checkpoint.title}</li>

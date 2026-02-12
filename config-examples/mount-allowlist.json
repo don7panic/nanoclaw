@@ -1,19 +1,9 @@
 {
   "allowedRoots": [
     {
-      "path": "~/projects",
+      "path": "~/workspace",
       "allowReadWrite": true,
       "description": "Development projects"
-    },
-    {
-      "path": "~/repos",
-      "allowReadWrite": true,
-      "description": "Git repositories"
-    },
-    {
-      "path": "~/Documents/work",
-      "allowReadWrite": false,
-      "description": "Work documents (read-only)"
     }
   ],
   "blockedPatterns": [

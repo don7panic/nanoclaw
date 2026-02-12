@@ -157,6 +157,41 @@ export function setupApiPlugin(): Plugin {
         return;
       }
 
+      if (method === 'GET' && pathname === '/api/channels/list') {
+        const channels = service.getAllChannels();
+        sendJson(res, 200, { channels });
+        return;
+      }
+
+      if (method === 'POST' && pathname === '/api/channels/add') {
+        const payload = (await readJsonBody(req)) as {
+          channelId: string;
+          name: string;
+          folder: string;
+          trigger: string;
+        };
+        const result = await service.addChannel(payload);
+        sendJson(res, result.success ? 200 : 400, result);
+        return;
+      }
+
+      if (method === 'POST' && pathname === '/api/channels/delete') {
+        const payload = (await readJsonBody(req)) as { channelId: string };
+        const result = await service.deleteChannel(payload.channelId);
+        sendJson(res, result.success ? 200 : 400, result);
+        return;
+      }
+
+      if (method === 'POST' && pathname === '/api/channels/update-mounts') {
+        const payload = (await readJsonBody(req)) as {
+          channelId: string;
+          mounts: Array<{ hostPath: string; containerPath: string; readonly?: boolean }>;
+        };
+        const result = await service.updateChannelMounts(payload);
+        sendJson(res, result.success ? 200 : 400, result);
+        return;
+      }
+
       next();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
