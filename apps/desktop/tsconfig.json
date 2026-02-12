@@ -13,6 +13,7 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "@setup-engine/*": ["../../src/setup-engine/*"]
     }
   },

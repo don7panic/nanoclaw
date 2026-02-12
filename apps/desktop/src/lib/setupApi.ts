@@ -1,13 +1,12 @@
-import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-
 import {
+  createEmptySnapshot,
   createEmptyState,
   type RetryStepPayload,
   type SkipManualCheckPayload,
   type StartStepPayload,
   type SetupLogEntry,
   type SetupManualActionEvent,
+  type SetupSnapshot,
   type SetupState,
 } from '../types';
 
@@ -18,81 +17,159 @@ interface SetupEvents {
   onFatalError?: (error: { message: string }) => void;
 }
 
-function isTauriRuntime(): boolean {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+const API_BASE = '/api/setup';
+
+function parseErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  return 'Request failed';
 }
 
-async function invokeOrMock<T>(command: string, payload?: object): Promise<T> {
-  if (isTauriRuntime()) {
-    return invoke<T>(command, payload);
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers ?? {}),
+    },
+    ...init,
+  });
+
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`;
+
+    try {
+      const payload = (await response.json()) as { message?: string };
+      if (payload?.message) {
+        message = payload.message;
+      }
+    } catch {
+      // Keep default message if response body is not JSON.
+    }
+
+    throw new Error(message);
   }
 
-  if (command === 'setup_get_state') {
-    return createEmptyState() as T;
-  }
+  return (await response.json()) as T;
+}
 
-  throw new Error('Tauri runtime is required for setup execution.');
+async function requestWithFallback<T>(
+  run: () => Promise<T>,
+  fallback: () => T,
+): Promise<T> {
+  try {
+    return await run();
+  } catch {
+    return fallback();
+  }
 }
 
 export const setup = {
   async getState(): Promise<SetupState> {
-    return invokeOrMock<SetupState>('setup_get_state');
+    return requestWithFallback(
+      () => requestJson<SetupState>('/state'),
+      () => createEmptyState(),
+    );
+  },
+
+  async getSnapshot(): Promise<SetupSnapshot> {
+    return requestWithFallback(
+      () => requestJson<SetupSnapshot>('/snapshot'),
+      () => createEmptySnapshot(),
+    );
   },
 
   async startStep(payload: StartStepPayload): Promise<SetupState> {
-    return invokeOrMock<SetupState>('setup_start_step', { payload });
+    return requestJson<SetupState>('/start-step', {
+      method: 'POST',
+      body: JSON.stringify({ payload }),
+    });
   },
 
   async retryStep(payload: RetryStepPayload): Promise<SetupState> {
-    return invokeOrMock<SetupState>('setup_retry_step', { payload });
+    return requestJson<SetupState>('/retry-step', {
+      method: 'POST',
+      body: JSON.stringify({ payload }),
+    });
   },
 
   async skipManualCheck(payload: SkipManualCheckPayload): Promise<SetupState> {
-    return invokeOrMock<SetupState>('setup_skip_manual_check', { payload });
+    return requestJson<SetupState>('/skip-manual-check', {
+      method: 'POST',
+      body: JSON.stringify({ payload }),
+    });
   },
 
   async cancel(): Promise<SetupState> {
-    return invokeOrMock<SetupState>('setup_cancel');
+    return requestJson<SetupState>('/cancel', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
   },
 
   async subscribe(events: SetupEvents): Promise<() => void> {
-    if (!isTauriRuntime()) {
-      return () => {};
-    }
+    const source = new EventSource(`${API_BASE}/events`);
 
-    const unlisteners: UnlistenFn[] = [];
+    const onLog = (event: MessageEvent<string>) => {
+      try {
+        events.onLog?.(JSON.parse(event.data) as SetupLogEntry);
+      } catch (error) {
+        events.onFatalError?.({ message: parseErrorMessage(error) });
+      }
+    };
 
-    unlisteners.push(
-      await listen<SetupLogEntry>('setup://log', ({ payload }) => {
-        events.onLog?.(payload);
-      }),
+    const onState = (event: MessageEvent<string>) => {
+      try {
+        events.onState?.(JSON.parse(event.data) as SetupState);
+      } catch (error) {
+        events.onFatalError?.({ message: parseErrorMessage(error) });
+      }
+    };
+
+    const onManualAction = (event: MessageEvent<string>) => {
+      try {
+        events.onManualAction?.(JSON.parse(event.data) as SetupManualActionEvent);
+      } catch (error) {
+        events.onFatalError?.({ message: parseErrorMessage(error) });
+      }
+    };
+
+    const onFatalError = (event: MessageEvent<string>) => {
+      try {
+        events.onFatalError?.(JSON.parse(event.data) as { message: string });
+      } catch (error) {
+        events.onFatalError?.({ message: parseErrorMessage(error) });
+      }
+    };
+
+    const onConnectionError = () => {
+      events.onFatalError?.({ message: 'Lost connection to setup server.' });
+    };
+
+    source.addEventListener('setup://log', onLog as EventListener);
+    source.addEventListener('setup://step-status', onState as EventListener);
+    source.addEventListener(
+      'setup://requires-user-action',
+      onManualAction as EventListener,
     );
-
-    unlisteners.push(
-      await listen<SetupState>('setup://step-status', ({ payload }) => {
-        events.onState?.(payload);
-      }),
-    );
-
-    unlisteners.push(
-      await listen<SetupManualActionEvent>(
-        'setup://requires-user-action',
-        ({ payload }) => {
-          events.onManualAction?.(payload);
-        },
-      ),
-    );
-
-    unlisteners.push(
-      await listen<{ message: string }>('setup://fatal-error', ({ payload }) => {
-        events.onFatalError?.(payload);
-      }),
-    );
+    source.addEventListener('setup://fatal-error', onFatalError as EventListener);
+    source.addEventListener('error', onConnectionError as EventListener);
 
     return () => {
-      for (const unlisten of unlisteners) {
-        unlisten();
-      }
+      source.removeEventListener('setup://log', onLog as EventListener);
+      source.removeEventListener('setup://step-status', onState as EventListener);
+      source.removeEventListener(
+        'setup://requires-user-action',
+        onManualAction as EventListener,
+      );
+      source.removeEventListener('setup://fatal-error', onFatalError as EventListener);
+      source.removeEventListener('error', onConnectionError as EventListener);
+      source.close();
     };
   },
 };

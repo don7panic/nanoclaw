@@ -2,93 +2,93 @@
 
 ## Overview
 
-The Desktop Setup Wizard replaces command-style `/setup` as the primary onboarding path.
+Desktop onboarding is now split into two phases:
+
+1. **Setup Wizard (blocking)**: dependency installation and runtime readiness only
+2. **Main Dashboard (non-blocking)**: integrations and optional configuration
 
 - App location: `apps/desktop`
-- Stack: `Tauri 2 + React + TypeScript + Vite`
-- UX goal: complete setup without terminal literacy
-- Platform focus: macOS-first
-- Runtime support: Apple Container and Docker
+- Stack: `Web (Vite + React + TypeScript) + Node setup service`
+- UI stack: `Tailwind CSS + shadcn-style component primitives`
+- Runtime path in setup: Apple Container (desktop-guided path)
 
-## Data and Compatibility
+## Setup Scope (Blocking)
 
-The wizard preserves existing NanoClaw runtime artifacts:
-
-- `data/registered_groups.json`
-- `store/messages.db`
-- `groups/*`
-- `launchd/com.nanoclaw.plist` (template remains, generated plist is written to `~/Library/LaunchAgents`)
-
-State and reports are persisted to:
-
-- `data/setup-wizard/state.json`
-- `data/setup-wizard/report.json`
-
-## Step Model
-
-The wizard is state-machine driven and deterministic:
+The setup wizard uses a horizontal stepper with 4 dependency-only steps:
 
 1. `preflight`
 2. `install_dependencies`
 3. `container_runtime`
-4. `claude_auth`
-5. `build_agent_image`
-6. `discord_auth`
-7. `assistant_name`
-8. `security_confirmation`
-9. `register_main_channel`
-10. `mount_allowlist`
-11. `launchd_setup`
-12. `final_test`
+4. `build_agent_image`
 
-Each step supports:
+Setup completion is based on dependency readiness. Already passing checks are auto-skipped.
 
-- `running`, `blocked`, `failed`, `done` statuses
-- manual checkpoints for user actions outside the app
-- retry from persisted state
+## Dependency Matrix
+
+The setup matrix checks:
+
+- Node.js
+- npm
+- Claude CLI
+- repository write permission
+- workspace npm dependencies (`workspaceDepsReady`)
+- Apple Container binary
+- Apple Container system status
+- `nanoclaw-agent` image availability
+
+Snapshot fields `canRunCore` and `missingCoreItems` represent this dependency matrix only.
+
+## Main Dashboard Scope (Non-Blocking)
+
+After setup passes, app navigates to the dashboard and surfaces task cards:
+
+1. Claude credential
+2. Discord bot token
+3. Register main channel
+4. Mount project allowlist
+5. Assistant name
+6. launchd background service
+
+These tasks do not block setup completion.
+
+## Status Feedback
+
+Dependency indicators use breathing-dot style states:
+
+- `checking`
+- `running`
+- `missing`
+- `ready`
+- `error`
 
 ## Desktop API Contract
 
-Tauri commands:
+HTTP endpoints in use:
 
-- `setup_start_step` (frontend wrapper: `setup.startStep(payload)`)
-- `setup_retry_step` (frontend wrapper: `setup.retryStep(stepId)`)
-- `setup_skip_manual_check` (frontend wrapper: `setup.skipManualCheck(stepId, checkpointId)`)
-- `setup_get_state` (frontend wrapper: `setup.getState()`)
-- `setup_cancel` (frontend wrapper: `setup.cancel()`)
+- `GET /api/setup/state`
+- `GET /api/setup/snapshot`
+- `POST /api/setup/start-step`
+- `POST /api/setup/retry-step`
+- `POST /api/setup/skip-manual-check`
+- `POST /api/setup/cancel`
 
-Tauri event channels:
+Events:
 
 - `setup://log`
 - `setup://step-status`
 - `setup://requires-user-action`
 - `setup://fatal-error`
 
-## Security Model
+## Data and Compatibility
 
-Secrets are stored in macOS Keychain (`service = nanoclaw.setup`):
+State/report paths unchanged:
 
-- `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`
-- `DISCORD_BOT_TOKEN`
-- optional `DISCORD_APP_ID`
-- `ASSISTANT_NAME`
+- `data/setup-wizard/state.json`
+- `data/setup-wizard/report.json`
 
-`.env` is no longer required for setup persistence. Runtime auth is injected via launch script from Keychain values.
+Legacy step functions remain available and reusable from dashboard task cards.
 
-Mount allowlist remains external and tamper-resistant:
-
-- `~/.config/nanoclaw/mount-allowlist.json`
-
-## Runtime Injection Change
-
-`src/container-runner.ts` now resolves auth env in this order:
-
-1. `process.env` (for Keychain-injected launchd runtime)
-2. `.env` fallback (for local/dev compatibility)
-
-This enables keychain-first setup without breaking existing development workflows.
-
-## Running the Wizard
+## Running
 
 From repo root:
 
@@ -99,6 +99,6 @@ npm run desktop:dev
 
 ## Troubleshooting
 
-- If a step is blocked, complete the shown manual checklist and retry.
-- If launchd setup fails, check `~/Library/LaunchAgents/com.nanoclaw.plist` and `logs/nanoclaw.error.log`.
-- If final test fails, inspect `data/setup-wizard/report.json` for per-step status.
+- If setup is blocked, resolve the dependency checkpoint and retry the same step.
+- If dashboard task fails, only that task needs retry; setup state remains complete.
+- If a runtime check fails, inspect `data/setup-wizard/report.json`.

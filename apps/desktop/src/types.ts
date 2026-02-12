@@ -20,6 +20,8 @@ export type StepStatus =
   | 'done'
   | 'cancelled';
 
+export type SetupConfigSource = 'keychain' | 'env' | 'dotenv' | 'none';
+
 export interface ManualCheckpoint {
   id: string;
   title: string;
@@ -45,9 +47,10 @@ export interface SetupState {
   createdAt: string;
   updatedAt: string;
   currentStep: SetupStepId;
-  selectedRuntime: 'apple_container' | 'docker' | null;
+  selectedRuntime: 'apple_container' | null;
   steps: Record<SetupStepId, SetupStepRuntime>;
   cancelled: boolean;
+  stepPayloads?: Record<string, unknown>;
 }
 
 export interface SetupLogEntry {
@@ -75,6 +78,53 @@ export interface SetupManualActionEvent {
   stepId: SetupStepId;
   reason: string;
   checkpoints: ManualCheckpoint[];
+}
+
+export interface SetupCredentialSnapshot {
+  configured: boolean;
+  source: SetupConfigSource | string;
+}
+
+export interface SetupClaudeCredentialSnapshot extends SetupCredentialSnapshot {
+  method: 'oauth' | 'api_key' | 'auth_token' | null;
+}
+
+export interface SetupDependenciesSnapshot {
+  node: boolean;
+  npm: boolean;
+  claude: boolean;
+  workspaceDepsReady: boolean;
+  appleContainer: boolean;
+  containerSystemRunning: boolean;
+  repoWritable: boolean;
+}
+
+export interface SetupMainChannelSnapshot {
+  configured: boolean;
+  channelId: string | null;
+  name: string | null;
+  folder: string | null;
+  trigger: string | null;
+}
+
+export interface SetupSnapshot {
+  generatedAt: string;
+  dependencies: SetupDependenciesSnapshot;
+  claudeCredential: SetupClaudeCredentialSnapshot;
+  discordBotToken: SetupCredentialSnapshot;
+  discordAppId: SetupCredentialSnapshot;
+  assistantName: string | null;
+  assistantNameSource: SetupConfigSource | string;
+  runtime: string;
+  runtimeReady: boolean;
+  imageBuilt: boolean;
+  mountAllowlistExists: boolean;
+  mountAllowlistPath: string;
+  launchdConfigured: boolean;
+  launchdLoaded: boolean;
+  registeredMainChannel: SetupMainChannelSnapshot;
+  canRunCore: boolean;
+  missingCoreItems: string[];
 }
 
 export const STEP_ORDER: Array<{ id: SetupStepId; title: string }> = [
@@ -116,5 +166,52 @@ export function createEmptyState(): SetupState {
     selectedRuntime: null,
     steps,
     cancelled: false,
+    stepPayloads: {},
+  };
+}
+
+export function createEmptySnapshot(): SetupSnapshot {
+  return {
+    generatedAt: new Date().toISOString(),
+    dependencies: {
+      node: false,
+      npm: false,
+      claude: false,
+      workspaceDepsReady: false,
+      appleContainer: false,
+      containerSystemRunning: false,
+      repoWritable: false,
+    },
+    claudeCredential: {
+      configured: false,
+      source: 'none',
+      method: null,
+    },
+    discordBotToken: {
+      configured: false,
+      source: 'none',
+    },
+    discordAppId: {
+      configured: false,
+      source: 'none',
+    },
+    assistantName: null,
+    assistantNameSource: 'none',
+    runtime: 'apple_container',
+    runtimeReady: false,
+    imageBuilt: false,
+    mountAllowlistExists: false,
+    mountAllowlistPath: '',
+    launchdConfigured: false,
+    launchdLoaded: false,
+    registeredMainChannel: {
+      configured: false,
+      channelId: null,
+      name: null,
+      folder: null,
+      trigger: null,
+    },
+    canRunCore: false,
+    missingCoreItems: [],
   };
 }

@@ -1,6 +1,6 @@
-# Andy
+# Orion
 
-You are Andy, a personal assistant. You help with tasks, answer questions, and can schedule reminders.
+You are Orion, a personal assistant. You help with tasks, answer questions, and can schedule reminders.
 
 ## What You Can Do
 
@@ -111,7 +111,7 @@ Groups are registered in `/workspace/project/data/registered_groups.json`:
   "123456789012345678": {
     "name": "Family Chat",
     "folder": "family-chat",
-    "trigger": "@Andy",
+    "trigger": "@Orion",
     "added_at": "2024-01-31T12:00:00.000Z"
   }
 }
@@ -147,7 +147,7 @@ Groups can have extra directories mounted. Add `containerConfig` to their entry:
   "123456789012345678": {
     "name": "Dev Team",
     "folder": "dev-team",
-    "trigger": "@Andy",
+    "trigger": "@Orion",
     "added_at": "2026-01-31T12:00:00Z",
     "containerConfig": {
       "additionalMounts": [
