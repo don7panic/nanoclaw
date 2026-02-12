@@ -17,10 +17,15 @@ NanoClaw gives you the same core functionality in a codebase you can understand 
 ```bash
 git clone https://github.com/gavrielc/nanoclaw.git
 cd nanoclaw
-claude
+npm run desktop:install
+npm run desktop:dev
 ```
 
-Then run `/setup`. Claude Code handles everything: dependencies, authentication, container setup, service configuration.
+This launches the **NanoClaw Desktop Setup Wizard** (`apps/desktop`) and walks through all initialization steps with a guided UI.
+
+Legacy note: `/setup` is still available as a compatibility shim but is no longer the primary onboarding flow.
+
+Detailed setup architecture and troubleshooting: [docs/desktop-setup-wizard.md](docs/desktop-setup-wizard.md)
 
 ## Philosophy
 
@@ -32,7 +37,7 @@ Then run `/setup`. Claude Code handles everything: dependencies, authentication,
 
 **Customization = code changes.** No configuration sprawl. Want different behavior? Modify the code. The codebase is small enough that this is safe.
 
-**AI-native.** No installation wizard; Claude Code guides setup. No monitoring dashboard; ask Claude what's happening. No debugging tools; describe the problem, Claude fixes it.
+**AI-native operations with guided onboarding.** Setup is now desktop-first for non-technical users, while daily operations stay AI-native through Claude interactions.
 
 **Skills over features.** Contributors shouldn't add features (e.g. support for Telegram) to the codebase. Instead, they contribute [claude code skills](https://code.claude.com/docs/en/skills) like `/add-telegram` that transform your fork. You end up with clean code that does exactly what you need.
 
@@ -105,6 +110,7 @@ Skills we'd love to see:
 
 - macOS or Linux
 - Node.js 20+
+- Rust toolchain (for Tauri desktop app)
 - [Claude Code](https://claude.ai/download)
 - [Apple Container](https://github.com/apple/container) (macOS) or [Docker](https://docker.com/products/docker-desktop) (macOS/Linux)
 
@@ -131,11 +137,11 @@ Because I use Discord. Fork it and run a skill to change it. That's the whole po
 
 **Why Apple Container instead of Docker?**
 
-On macOS, Apple Container is lightweight, fast, and optimized for Apple silicon. But Docker is also fully supported—during `/setup`, you can choose which runtime to use. On Linux, Docker is used automatically.
+On macOS, Apple Container is lightweight, fast, and optimized for Apple silicon. Docker is also fully supported. The desktop wizard detects both and lets you choose.
 
 **Can I run this on Linux?**
 
-Yes. Run `/setup` and it will automatically configure Docker as the container runtime. Thanks to [@dotsetgreg](https://github.com/dotsetgreg) for contributing the `/convert-to-docker` skill.
+Yes. Docker is the expected runtime on Linux. Current desktop wizard release is macOS-first; Linux packaging is planned next.
 
 **Is this secure?**
 
@@ -151,7 +157,7 @@ Ask Claude Code. "Why isn't the scheduler running?" "What's in the recent logs?"
 
 **Why isn't the setup working for me?**
 
-I don't know. Run `claude`, then run `/debug`. If claude finds an issue that is likely affecting other users, open a PR to modify the setup SKILL.md.
+Run the desktop wizard and inspect `data/setup-wizard/report.json`. For deeper runtime issues, run `claude` then `/debug`.
 
 **What changes will be accepted into the codebase?**
 

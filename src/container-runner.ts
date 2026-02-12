@@ -54,6 +54,46 @@ interface VolumeMount {
   readonly?: boolean;
 }
 
+const ALLOWED_ENV_VARS = [
+  'CLAUDE_CODE_OAUTH_TOKEN',
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_BASE_URL',
+  'ANTHROPIC_AUTH_TOKEN',
+];
+
+function buildFilteredEnvLines(projectRoot: string): string[] {
+  const envLines: string[] = [];
+
+  // Priority 1: process environment (Keychain-injected launchd/runtime env)
+  for (const key of ALLOWED_ENV_VARS) {
+    const value = process.env[key];
+    if (value && value.trim()) {
+      envLines.push(`${key}=${value}`);
+    }
+  }
+
+  // Priority 2: .env fallback for local/dev compatibility
+  if (envLines.length > 0) {
+    return envLines;
+  }
+
+  const envFile = path.join(projectRoot, '.env');
+  if (!fs.existsSync(envFile)) {
+    return envLines;
+  }
+
+  const envContent = fs.readFileSync(envFile, 'utf-8');
+  for (const line of envContent.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    if (ALLOWED_ENV_VARS.some((key) => trimmed.startsWith(`${key}=`))) {
+      envLines.push(trimmed);
+    }
+  }
+
+  return envLines;
+}
+
 function buildVolumeMounts(
   group: RegisteredGroup,
   isMain: boolean,
@@ -123,30 +163,18 @@ function buildVolumeMounts(
   });
 
   // Environment file directory (workaround for Apple Container -i env var bug)
-  // Only expose specific auth variables needed by Claude Code, not the entire .env
+  // Only expose specific auth variables needed by Claude Code.
+  // Priority: process.env -> .env fallback.
   const envDir = path.join(DATA_DIR, 'env');
   fs.mkdirSync(envDir, { recursive: true });
-  const envFile = path.join(projectRoot, '.env');
-  if (fs.existsSync(envFile)) {
-    const envContent = fs.readFileSync(envFile, 'utf-8');
-    const allowedVars = ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY', 'ANTHROPIC_BASE_URL', 'ANTHROPIC_AUTH_TOKEN'];
-    const filteredLines = envContent.split('\n').filter((line) => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return false;
-      return allowedVars.some((v) => trimmed.startsWith(`${v}=`));
+  const filteredLines = buildFilteredEnvLines(projectRoot);
+  if (filteredLines.length > 0) {
+    fs.writeFileSync(path.join(envDir, 'env'), filteredLines.join('\n') + '\n');
+    mounts.push({
+      hostPath: envDir,
+      containerPath: '/workspace/env-dir',
+      readonly: true,
     });
-
-    if (filteredLines.length > 0) {
-      fs.writeFileSync(
-        path.join(envDir, 'env'),
-        filteredLines.join('\n') + '\n',
-      );
-      mounts.push({
-        hostPath: envDir,
-        containerPath: '/workspace/env-dir',
-        readonly: true,
-      });
-    }
   }
 
   // Additional mounts validated against external allowlist (tamper-proof from containers)

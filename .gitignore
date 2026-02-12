@@ -1,8 +1,11 @@
 # Dependencies
 node_modules/
+apps/**/node_modules/
 
 # Build output
 dist/
+apps/**/dist/
+apps/**/src-tauri/target/
 
 # Local data & auth
 store/

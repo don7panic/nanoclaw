@@ -32,7 +32,7 @@ No configuration sprawl. If you want different behavior, modify the code. The co
 
 ### AI-Native Development
 
-I don't need an installation wizard - Claude Code guides the setup. I don't need a monitoring dashboard - I ask Claude Code what's happening. I don't need elaborate logging UIs - I ask Claude to read the logs. I don't need debugging tools - I describe the problem and Claude fixes it.
+I want a non-technical setup path for first-time users, and AI-native operations after install. Setup is desktop-guided; ongoing operations are conversational with Claude Code.
 
 The codebase assumes you have an AI collaborator. It doesn't need to be excessively self-documenting or self-debugging because Claude is always there.
 
@@ -166,12 +166,12 @@ A personal Claude assistant accessible via Discord, with minimal custom code.
 
 ### Philosophy
 - Minimal configuration files
-- Setup and customization done via Claude Code
-- Users clone the repo and run Claude Code to configure
+- Setup handled by Desktop Setup Wizard (`apps/desktop`)
+- Users clone the repo and run the desktop wizard for initialization
 - Each user gets a custom setup matching their exact needs
 
 ### Skills
-- `/setup` - Install dependencies, authenticate Discord, configure scheduler, start services
+- `/setup` - Compatibility redirect to desktop setup flow
 - `/customize` - General-purpose skill for adding capabilities (new channels like Telegram, new integrations, behavior changes)
 
 ### Deployment
