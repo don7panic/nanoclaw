@@ -1,6 +1,6 @@
 import { type Dispatch, type SetStateAction } from 'react';
 
-import { type StepDraft } from '@/features/shared/setupDraft';
+import { generateId, type StepDraft } from '@/features/shared/setupDraft';
 import { type SetupLogEntry, type SetupSnapshot, type SetupState, type SetupStepId } from '@/types';
 import * as React from 'react';
 
@@ -313,7 +313,7 @@ function renderTaskForm(
         <div className="space-y-3">
           {draft.mountRoots.map((root, index) => (
             <div
-              key={`${root.path}-${index}`}
+              key={root.id}
               className="space-y-2 rounded-xl border border-border/75 bg-background/35 p-3"
             >
               <div className="grid gap-2 md:grid-cols-2">
@@ -365,7 +365,7 @@ function renderTaskForm(
               ...prev,
               mountRoots: [
                 ...prev.mountRoots,
-                { path: '', description: '', allowReadWrite: false },
+                { id: generateId(), path: '', description: '', allowReadWrite: false },
               ],
             }))
           }
@@ -577,9 +577,9 @@ export function MainDashboardView({
                   .slice()
                   .reverse()
                   .slice(0, 100)
-                  .map((entry) => (
+                  .map((entry, index) => (
                     <article
-                      key={`${entry.timestamp}-${entry.message}`}
+                      key={`${entry.timestamp}-${index}-${entry.message}`}
                       className="rounded-lg border border-border/80 bg-card/45 px-3 py-2"
                     >
                       <p className="flex items-center justify-between gap-3 text-xs text-muted-foreground">

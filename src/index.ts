@@ -53,7 +53,7 @@ async function setTyping(channelId: string, isTyping: boolean): Promise<void> {
   if (!isTyping) return;
   try {
     const channel = await client.channels.fetch(channelId);
-    if (!channel || !channel.isTextBased()) return;
+    if (!channel || !channel.isTextBased() || !('sendTyping' in channel)) return;
     await channel.sendTyping();
   } catch (err) {
     logger.debug({ channelId, err }, 'Failed to send typing indicator');
@@ -198,6 +198,7 @@ async function processMessage(msg: NewMessage): Promise<void> {
   logger.info(
     {
       group: group.name,
+      trigger: group.trigger,
       isMainGroup,
       content: content.substring(0, 50),
       matchesTrigger: TRIGGER_PATTERN.test(content),
@@ -210,10 +211,21 @@ async function processMessage(msg: NewMessage): Promise<void> {
   const isMentioned = msg.content.includes(`<@${client.user?.id}>`) || msg.content.includes(`<@!${client.user?.id}>`);
   const isNameTriggered = TRIGGER_PATTERN.test(content);
 
-  if (!isMainGroup && !isMentioned && !isNameTriggered) {
+  // Support role mention trigger for non-main groups (e.g., <@&1468828249831506016>)
+  const roleMentionPattern = /<@&(\d+)>/;
+  const roleMatch = content.match(roleMentionPattern);
+  const triggerId = group.trigger?.replace(/^@/, '');
+  const isRoleTriggered = roleMatch !== null && triggerId === roleMatch[1];
+
+  // Specific text trigger match (e.g. "@bigbang")
+  const isGroupTriggered = group.trigger && content.includes(group.trigger);
+
+  // For non-main groups, require SPECIFIC trigger (role or text)
+  // We explicitly ignore generic bot mentions (isMentioned) and name triggers (isNameTriggered)
+  if (!isMainGroup && !isRoleTriggered && !isGroupTriggered) {
     logger.info(
       { group: group.name, content: content.substring(0, 50) },
-      'Non-main group message without trigger prefix, skipping'
+      'Non-main group message without specific trigger, skipping'
     );
     return;
   }
@@ -326,15 +338,49 @@ async function runAgent(
   }
 }
 
+const DISCORD_MAX_MESSAGE_LENGTH = 2000;
+
+function splitMessage(text: string, maxLength: number): string[] {
+  if (text.length <= maxLength) return [text];
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLength) {
+      chunks.push(remaining);
+      break;
+    }
+
+    // Find a good break point (newline preferred, then space, then hard cut)
+    let cutPoint = remaining.lastIndexOf('\n', maxLength);
+    if (cutPoint <= 0) {
+      cutPoint = remaining.lastIndexOf(' ', maxLength);
+    }
+    if (cutPoint <= 0) {
+      cutPoint = maxLength;
+    }
+
+    chunks.push(remaining.slice(0, cutPoint));
+    remaining = remaining.slice(cutPoint).trimStart();
+  }
+
+  return chunks;
+}
+
 async function sendMessage(channelId: string, text: string): Promise<void> {
   try {
     const channel = await client.channels.fetch(channelId);
-    if (!channel || !channel.isTextBased()) {
-      logger.warn({ channelId }, 'Channel not found or not text-based');
+    if (!channel || !channel.isTextBased() || !('send' in channel)) {
+      logger.warn({ channelId }, 'Channel not found, not text-based, or cannot send messages');
       return;
     }
-    await channel.send({ content: text });
-    logger.info({ channelId, length: text.length }, 'Message sent');
+
+    const chunks = splitMessage(text, DISCORD_MAX_MESSAGE_LENGTH);
+    for (const chunk of chunks) {
+      await channel.send({ content: chunk });
+    }
+    logger.info({ channelId, length: text.length, chunks: chunks.length }, 'Message sent');
   } catch (err) {
     logger.error({ channelId, err }, 'Failed to send message');
   }

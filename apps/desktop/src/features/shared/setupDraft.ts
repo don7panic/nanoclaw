@@ -8,9 +8,17 @@ export type RuntimeChoice = 'apple_container';
 export type ClaudeAuthMethod = 'oauth' | 'api_key';
 
 export interface AllowRootInput {
+  id: string;
   path: string;
   allowReadWrite: boolean;
   description: string;
+}
+
+export function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export interface StepDraft {
@@ -77,6 +85,7 @@ function parseAllowRoots(
       const path = typeof typed.path === 'string' ? typed.path : '';
       if (!path.trim()) return null;
       return {
+        id: typeof typed.id === 'string' ? typed.id : generateId(),
         path,
         allowReadWrite:
           typeof typed.allowReadWrite === 'boolean' ? typed.allowReadWrite : false,
@@ -104,6 +113,7 @@ export function createDefaultDraft(snapshot: SetupSnapshot): StepDraft {
     mountNonMainReadOnly: true,
     mountRoots: [
       {
+        id: generateId(),
         path: '~/projects',
         allowReadWrite: true,
         description: 'Development projects',
@@ -141,7 +151,7 @@ export function hydrateDraft(state: SetupState, snapshot: SetupSnapshot): StepDr
         ? claudeMethod
         : defaults.claudeAuthMethod,
     claudeToken: '',
-    discordBotToken: '',
+    discordBotToken: getString(discordPayload, 'discordBotToken') || defaults.discordBotToken,
     discordAppId: getString(discordPayload, 'discordAppId') || defaults.discordAppId,
     assistantName,
     securityConfirmed:

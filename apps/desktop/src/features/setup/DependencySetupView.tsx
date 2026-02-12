@@ -360,9 +360,9 @@ export function DependencySetupView({
                 .slice()
                 .reverse()
                 .slice(0, 60)
-                .map((entry) => (
+                .map((entry, index) => (
                   <article
-                    key={`${entry.timestamp}-${entry.message}`}
+                    key={`${entry.timestamp}-${index}-${entry.message}`}
                     className="rounded-lg border border-border/80 bg-background/45 px-3 py-2"
                   >
                     <p className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
