@@ -163,42 +163,46 @@ export function DependencySetupView({
   const selectedBadge = getStepBadge(selectedRuntime.status);
 
   return (
-    <div className="tech-shell">
-      <header className="glass-panel animate-rise-in p-6 md:p-7">
-        <p className="text-xs uppercase tracking-[0.14em] text-accent">
-          NanoClaw Desktop Setup
-        </p>
-        <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <h1 className="text-3xl leading-tight text-foreground md:text-4xl">
-              Minimal Tech Onboarding
+    <div className="heritage-shell">
+      <header className="animate-rise-in space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+          <p className="text-xs font-medium uppercase tracking-widest text-gold/80">
+            NanoClaw Desktop
+          </p>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+        </div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-3">
+            <h1 className="font-serif text-3xl text-foreground md:text-4xl">
+              Setup
             </h1>
-            <p className="max-w-3xl text-sm text-muted-foreground md:text-base">
-              Setup focuses on dependency readiness only. Discord channel, mount
-              project, and optional service configuration move to the main dashboard.
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              Configure your NanoClaw assistant with heritage-grade precision.
+              Dependency readiness ensures reliable operation.
             </p>
           </div>
           <Badge variant={setupComplete ? 'success' : 'warning'}>
-            {setupComplete ? 'Dependencies Ready' : 'Setup Required'}
+            {setupComplete ? 'Ready' : 'Setup Required'}
           </Badge>
         </div>
       </header>
 
-      <Card className="animate-rise-in [animation-delay:80ms]">
-        <CardHeader>
+      <Card className="animate-rise-in">
+        <CardHeader className="border-b border-border/50">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <CardTitle>Horizontal Setup Guide</CardTitle>
+              <CardTitle>Setup Guide</CardTitle>
               <CardDescription>
-                Auto-detect passing checks and only execute missing dependency steps.
+                Auto-detect passing checks and execute missing dependencies.
               </CardDescription>
             </div>
             <Badge variant={selectedBadge.variant}>{selectedBadge.text}</Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-6 pt-6">
           <Progress value={progress} />
-          <ol className="grid gap-3 md:grid-cols-4">
+          <ol className="grid gap-4 md:grid-cols-4">
             {DEPENDENCY_STEPS.map((step) => {
               const runtime = state.steps[step.id];
               const badge = getStepBadge(runtime.status);
@@ -207,10 +211,11 @@ export function DependencySetupView({
                 <li key={step.id}>
                   <button
                     className={cn(
-                      'group h-full w-full rounded-xl border px-4 py-3 text-left transition hover:border-cyan-300/65 hover:bg-muted/65',
+                      'group h-full w-full rounded-lg border px-4 py-4 text-left transition-all duration-200',
+                      'hover:border-gold/40 hover:bg-muted/30 hover:shadow-sm',
                       active
-                        ? 'border-cyan-300/75 bg-muted/80'
-                        : 'border-border/80 bg-background/50',
+                        ? 'border-gold/60 bg-muted/50 shadow-sm'
+                        : 'border-border bg-card',
                     )}
                     onClick={() => onSelectStep(step.id)}
                     type="button"
@@ -219,12 +224,12 @@ export function DependencySetupView({
                       <StatusBreathingDot
                         status={mapStepStatusToDot(runtime.status as StepStatus, active)}
                       />
-                      <span className="text-xs uppercase tracking-[0.11em] text-muted-foreground">
+                      <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         {badge.text}
                       </span>
                     </div>
-                    <p className="mt-2 font-heading text-lg text-foreground">{step.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{step.summary}</p>
+                    <p className="mt-3 font-serif text-base text-foreground">{step.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground/80">{step.summary}</p>
                   </button>
                 </li>
               );
@@ -232,32 +237,32 @@ export function DependencySetupView({
           </ol>
 
           {fatalError ? (
-            <div className="rounded-xl border border-danger/50 bg-danger/10 px-4 py-3 text-sm text-rose-200">
+            <div className="rounded-lg border border-burgundy/40 bg-burgundy/10 px-4 py-3 text-sm text-burgundy">
               {fatalError}
             </div>
           ) : null}
 
           {lastManualAction && lastManualAction.stepId === selectedStepId ? (
-            <div className="rounded-xl border border-warning/40 bg-warning/10 p-4">
-              <p className="font-semibold text-warning-foreground">Manual action required</p>
-              <p className="mt-1 text-sm text-warning-foreground/90">
+            <div className="rounded-lg border border-gold/40 bg-gold/10 p-4">
+              <p className="font-medium text-foreground">Manual Action Required</p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {lastManualAction.reason}
               </p>
             </div>
           ) : null}
 
           {selectedRuntime.blockedReason ? (
-            <div className="rounded-xl border border-warning/45 bg-warning/10 p-4">
-              <p className="text-sm font-semibold text-warning-foreground">
+            <div className="rounded-lg border border-gold/40 bg-gold/10 p-4">
+              <p className="text-sm font-medium text-foreground">
                 {selectedRuntime.blockedReason}
               </p>
-              <div className="mt-3 space-y-3">
+              <div className="mt-4 space-y-3">
                 {selectedRuntime.manualCheckpoints.map((checkpoint) => (
                   <div
                     key={checkpoint.id}
-                    className="rounded-lg border border-warning/40 bg-background/40 p-3"
+                    className="rounded-lg border border-border bg-card p-4"
                   >
-                    <p className="text-sm font-semibold text-foreground">
+                    <p className="text-sm font-medium text-foreground">
                       {checkpoint.title}
                     </p>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
@@ -266,7 +271,7 @@ export function DependencySetupView({
                       ))}
                     </ul>
                     <Button
-                      className="mt-3"
+                      className="mt-4"
                       disabled={busy || checkpoint.completed}
                       onClick={() => onMarkCheckpoint(checkpoint.id)}
                       size="sm"
@@ -280,42 +285,42 @@ export function DependencySetupView({
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3 pt-2">
             <Button disabled={busy} onClick={onRunGuidedSetup}>
-              {busy ? 'Running setup...' : 'Start / Continue Setup'}
+              {busy ? 'Running setup...' : 'Start Setup'}
             </Button>
             <Button
               disabled={busy}
               onClick={() => onRunSelectedStep(false)}
               variant="secondary"
             >
-              Run Selected Step
+              Run Selected
             </Button>
             <Button
               disabled={busy}
               onClick={() => onRunSelectedStep(true)}
               variant="secondary"
             >
-              Retry Selected Step
+              Retry
             </Button>
             <Button disabled={busy} onClick={onCancelSetup} variant="ghost">
-              Cancel Setup
+              Cancel
             </Button>
-            <Button disabled={!setupComplete} onClick={onOpenDashboard} variant="ghost">
-              Open Dashboard
+            <Button disabled={!setupComplete} onClick={onOpenDashboard} variant="outline">
+              Dashboard
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="animate-rise-in [animation-delay:130ms]">
-        <CardHeader>
-          <CardTitle>Dependency Status Matrix</CardTitle>
+      <Card className="animate-rise-in ">
+        <CardHeader className="border-b border-border/50">
+          <CardTitle>Dependency Status</CardTitle>
           <CardDescription>
-            Breathing indicators show pass/fail status with live setup feedback.
+            System readiness indicators with live feedback.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
           {DEPENDENCY_MATRIX.map((dep) => {
             const ready = dep.from(snapshot);
             const status: BreathingStatus = ready
@@ -329,30 +334,30 @@ export function DependencySetupView({
               <div
                 key={dep.key}
                 className={cn(
-                  'rounded-xl border p-3',
-                  ready ? 'border-success/45 bg-success/10' : 'border-border bg-muted/25',
+                  'rounded-lg border p-4 transition-colors',
+                  ready ? 'border-forest/30 bg-forest/5' : 'border-border bg-card',
                 )}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <StatusBreathingDot status={status} />
-                  <p className="text-sm font-semibold text-foreground">{dep.label}</p>
+                  <p className="text-sm font-medium text-foreground">{dep.label}</p>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{dep.describe}</p>
+                <p className="mt-2 text-xs text-muted-foreground">{dep.describe}</p>
               </div>
             );
           })}
         </CardContent>
       </Card>
 
-      <Card className="animate-rise-in [animation-delay:180ms]">
-        <CardHeader>
-          <CardTitle>Live Setup Log</CardTitle>
-          <CardDescription>Latest execution output from setup steps.</CardDescription>
+      <Card className="animate-rise-in ">
+        <CardHeader className="border-b border-border/50">
+          <CardTitle>Setup Log</CardTitle>
+          <CardDescription>Execution output from setup steps.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="max-h-64 space-y-2 overflow-y-auto pr-2">
+        <CardContent className="pt-6">
+          <div className="max-h-64 space-y-3 overflow-y-auto pr-2 font-mono text-sm">
             {logs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground italic">
                 No runtime output yet. Start setup to stream logs.
               </p>
             ) : (
@@ -363,13 +368,13 @@ export function DependencySetupView({
                 .map((entry, index) => (
                   <article
                     key={`${entry.timestamp}-${index}-${entry.message}`}
-                    className="rounded-lg border border-border/80 bg-background/45 px-3 py-2"
+                    className="rounded border border-border/50 bg-muted/30 px-4 py-3"
                   >
                     <p className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                      <span>{entry.timestamp}</span>
-                      <span className="uppercase tracking-[0.1em]">{entry.stepId}</span>
+                      <span className="font-mono">{entry.timestamp}</span>
+                      <span className="text-xs font-medium uppercase tracking-wider text-gold/70">{entry.stepId}</span>
                     </p>
-                    <p className="mt-1 text-sm text-foreground">{entry.message}</p>
+                    <p className="mt-2 text-sm text-foreground">{entry.message}</p>
                   </article>
                 ))
             )}

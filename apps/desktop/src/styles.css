@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,23 +6,55 @@
 
 @layer base {
   :root {
-    --background: 210 20% 97%;
-    --foreground: 210 30% 14%;
-    --card: 0 0% 100%;
-    --card-foreground: 210 30% 14%;
-    --muted: 210 16% 93%;
-    --muted-foreground: 210 12% 48%;
-    --accent: 191 86% 42%;
-    --accent-foreground: 0 0% 100%;
-    --success: 164 82% 36%;
-    --success-foreground: 164 82% 20%;
-    --warning: 38 93% 50%;
-    --warning-foreground: 32 92% 22%;
-    --danger: 349 85% 55%;
-    --danger-foreground: 349 85% 28%;
-    --border: 210 18% 85%;
-    --input: 210 18% 85%;
-    --ring: 191 86% 42%;
+    /* Old Money Heritage Palette */
+
+    /* Base - Warm Ivory / Bone */
+    --background: 42 33% 97%;
+    --foreground: 220 20% 18%;
+
+    /* Surfaces - Cream and Linen */
+    --card: 40 25% 98%;
+    --card-foreground: 220 20% 18%;
+
+    /* Muted - Soft Taupe */
+    --muted: 38 15% 92%;
+    --muted-foreground: 220 12% 45%;
+
+    /* Borders - Warm Grey */
+    --border: 38 15% 85%;
+    --input: 38 15% 88%;
+
+    /* Primary Accent - Deep Navy */
+    --accent: 215 45% 25%;
+    --accent-foreground: 40 25% 98%;
+    --ring: 215 45% 35%;
+
+    /* Gold - Classic Luxury */
+    --gold: 38 45% 58%;
+    --gold-muted: 38 30% 70%;
+    --gold-light: 38 40% 75%;
+
+    /* Navy - Primary Brand */
+    --navy: 215 45% 25%;
+    --navy-light: 215 35% 35%;
+    --navy-dark: 215 50% 18%;
+
+    /* Burgundy - Secondary Accent */
+    --burgundy: 345 35% 35%;
+    --burgundy-light: 345 30% 45%;
+    --burgundy-dark: 345 40% 28%;
+
+    /* Forest - Tertiary */
+    --forest: 150 25% 30%;
+    --forest-light: 150 20% 40%;
+
+    /* Semantic - Heritage Tones */
+    --success: 150 25% 32%;
+    --success-foreground: 40 25% 98%;
+    --warning: 38 55% 48%;
+    --warning-foreground: 220 20% 18%;
+    --danger: 345 40% 45%;
+    --danger-foreground: 40 25% 98%;
   }
 
   * {
@@ -37,29 +69,113 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Manrope', sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     background-image:
-      radial-gradient(circle at 18% 0%, rgba(14, 165, 197, 0.06), transparent 36%),
-      radial-gradient(circle at 88% 2%, rgba(15, 118, 110, 0.05), transparent 28%),
-      linear-gradient(rgba(200, 210, 220, 0.4) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(200, 210, 220, 0.4) 1px, transparent 1px);
-    background-size: auto, auto, 36px 36px, 36px 36px;
+      /* Subtle linen texture overlay */
+      url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"),
+      /* Warm gradient vignette */
+      radial-gradient(ellipse at 50% 0%, rgba(184, 159, 115, 0.06), transparent 60%),
+      radial-gradient(ellipse at 100% 100%, rgba(45, 55, 72, 0.04), transparent 50%),
+      linear-gradient(180deg, hsl(42, 33%, 97%), hsl(40, 25%, 95%));
+    background-size: 200px 200px, auto, auto, auto;
   }
 
-  h1,
-  h2,
-  h3,
+  /* Headings - Classic Serif */
+  h1, h2, h3 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  h1 {
+    font-size: 1.875rem;
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    line-height: 1.4;
+  }
+
   h4 {
-    font-family: 'Chakra Petch', sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Refined selection */
+  ::selection {
+    background: hsl(38 45% 58% / 0.25);
+    color: hsl(215 45% 25%);
   }
 }
 
 @layer utilities {
-  .tech-shell {
-    @apply mx-auto flex min-h-screen w-full max-w-[1280px] flex-col gap-5 px-4 py-6 md:px-8 md:py-8;
+  /* Heritage Shell - Centered, refined layout */
+  .heritage-shell {
+    @apply mx-auto flex min-h-screen w-full max-w-[1080px] flex-col gap-6 px-6 py-8 md:px-10 md:py-12;
   }
 
-  .glass-panel {
-    @apply rounded-2xl border border-border/70 bg-card/80 shadow-panel backdrop-blur;
+  /* Heritage Card - Subtle elegance */
+  .heritage-card {
+    @apply rounded-lg border border-border bg-card shadow-card;
+  }
+
+  /* Gold accent line - Classic luxury detail */
+  .gold-line {
+    @apply h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent;
+  }
+
+  .gold-line-left {
+    @apply h-px bg-gradient-to-r from-gold/60 to-transparent;
+  }
+
+  /* Heritage button styles */
+  .btn-heritage {
+    @apply inline-flex items-center justify-center rounded px-5 py-2.5 text-sm font-medium tracking-wide transition-all duration-200;
+    @apply bg-navy text-white hover:bg-navy-light;
+    @apply shadow-sm hover:shadow;
+  }
+
+  .btn-heritage-secondary {
+    @apply inline-flex items-center justify-center rounded border border-border px-5 py-2.5 text-sm font-medium tracking-wide transition-all duration-200;
+    @apply bg-transparent text-foreground hover:bg-muted/50;
+  }
+
+  /* Subtle gold underline accent */
+  .accent-underline {
+    @apply relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-12 after:bg-gold/70;
+  }
+
+  /* Monospace for technical values */
+  .mono-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+  }
+
+  /* Status indicators - Breathing elegance */
+  .status-dot {
+    @apply h-2 w-2 rounded-full;
+  }
+
+  .status-active {
+    @apply bg-forest;
+    box-shadow: 0 0 0 2px hsl(150 25% 30% / 0.2);
+  }
+
+  .status-pending {
+    @apply bg-gold;
+  }
+
+  .status-error {
+    @apply bg-burgundy;
   }
 }

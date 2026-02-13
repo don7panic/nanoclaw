@@ -150,18 +150,20 @@ export function RegisterMainChannelPanel({
     <div className="space-y-5">
       {/* Error Display */}
       {error && (
-        <div className="rounded-xl border border-danger/50 bg-danger/10 px-4 py-3 text-sm text-rose-200">
+        <div className="rounded-lg border border-burgundy/40 bg-burgundy/10 px-4 py-3 text-sm text-burgundy">
           {error}
         </div>
       )}
 
       {/* Main Channel Configuration */}
       {!snapshot.registeredMainChannel.configured && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold">Main Channel</h3>
-          <p className="text-sm text-muted-foreground">
-            Configure your primary Discord channel for NanoClaw control.
-          </p>
+        <div className="space-y-4">
+          <div>
+            <h3 className="font-serif text-base font-medium">Main Channel</h3>
+            <p className="text-sm text-muted-foreground">
+              Configure your primary Discord channel for NanoClaw control.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="channel-id">Channel ID</Label>
             <Input
@@ -201,9 +203,9 @@ export function RegisterMainChannelPanel({
       )}
 
       {/* Registered Channels List */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">
+          <h3 className="font-serif text-base font-medium">
             Registered Channels ({allChannels.length})
           </h3>
           <Button
@@ -212,13 +214,13 @@ export function RegisterMainChannelPanel({
             size="sm"
             variant={showAddForm ? 'secondary' : 'default'}
           >
-            {showAddForm ? 'Cancel' : '+ Add Channel'}
+            {showAddForm ? 'Cancel' : 'Add Channel'}
           </Button>
         </div>
 
         {/* Add Channel Form */}
         {showAddForm && (
-          <div className="space-y-3 rounded-xl border border-border/75 bg-background/35 p-4">
+          <div className="space-y-4 rounded-lg border border-border bg-card p-4">
             <h4 className="text-sm font-medium">New Channel</h4>
             <div className="space-y-2">
               <Label htmlFor="new-channel-id">Channel ID</Label>
@@ -274,19 +276,19 @@ export function RegisterMainChannelPanel({
 
         {/* Channels List */}
         {allChannels.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No channels registered yet.</p>
+          <p className="text-sm text-muted-foreground italic">No channels registered yet.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {allChannels.map((channel) => (
               <div
                 key={channel.id}
-                className="rounded-xl border border-border/75 bg-background/35 p-3 space-y-3"
+                className="rounded-lg border border-border bg-card p-4 space-y-3"
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium">{channel.name}</p>
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      <span>ID: {channel.id}</span>
+                    <p className="text-sm font-medium text-foreground">{channel.name}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span className="font-mono">ID: {channel.id}</span>
                       <span>Folder: {channel.folder}</span>
                       <span>Trigger: {channel.trigger}</span>
                       <span>Mounts: {channel.mounts?.length || 0}</span>
@@ -318,13 +320,13 @@ export function RegisterMainChannelPanel({
 
                 {/* Mount Editor */}
                 {editingMountsFor === channel.id && (
-                  <div className="rounded-lg border border-border/50 bg-background/50 p-3 space-y-2">
-                    <h5 className="text-xs font-semibold uppercase tracking-wide text-accent">
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                    <h5 className="text-xs font-medium uppercase tracking-wider text-navy/80">
                       Configure Mounts
                     </h5>
                     {mountDraft.map((mount, idx) => (
-                      <div key={idx} className="flex gap-2 items-start">
-                        <div className="flex-1 space-y-1">
+                      <div key={idx} className="flex gap-3 items-start">
+                        <div className="flex-1 space-y-2">
                           <Input
                             placeholder="/Users/you/projects/myapp"
                             value={mount.hostPath}
@@ -334,7 +336,7 @@ export function RegisterMainChannelPanel({
                               setMountDraft(newDraft);
                             }}
                           />
-                          <div className="flex gap-2 items-center">
+                          <div className="flex gap-3 items-center">
                             <Input
                               className="flex-1"
                               placeholder="myapp"
@@ -345,7 +347,7 @@ export function RegisterMainChannelPanel({
                                 setMountDraft(newDraft);
                               }}
                             />
-                            <label className="text-xs flex items-center gap-1 whitespace-nowrap">
+                            <label className="text-xs flex items-center gap-2 whitespace-nowrap text-muted-foreground">
                               <Checkbox
                                 checked={mount.readonly}
                                 onCheckedChange={(checked) => {
@@ -354,7 +356,7 @@ export function RegisterMainChannelPanel({
                                   setMountDraft(newDraft);
                                 }}
                               />
-                              Read-only
+                              <span>Read-only</span>
                             </label>
                           </div>
                         </div>
@@ -367,7 +369,7 @@ export function RegisterMainChannelPanel({
                         </Button>
                       </div>
                     ))}
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 pt-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -378,7 +380,7 @@ export function RegisterMainChannelPanel({
                           ])
                         }
                       >
-                        + Add Mount
+                        Add Mount
                       </Button>
                       <Button
                         size="sm"

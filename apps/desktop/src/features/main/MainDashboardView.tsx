@@ -210,7 +210,7 @@ function renderTaskForm(
 ): JSX.Element {
   if (taskId === 'claude_auth') {
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="claude-method">Authentication Method</Label>
           <Select
@@ -297,8 +297,8 @@ function renderTaskForm(
 
   if (taskId === 'mount_allowlist') {
     return (
-      <div className="space-y-4">
-        <label className="flex items-center gap-2 text-sm text-foreground">
+      <div className="space-y-5">
+        <label className="flex items-center gap-3 text-sm text-foreground">
           <Checkbox
             checked={draft.mountNonMainReadOnly}
             onChange={(event) =>
@@ -308,15 +308,15 @@ function renderTaskForm(
               }))
             }
           />
-          Force non-main groups as read-only
+          <span>Force non-main groups as read-only</span>
         </label>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {draft.mountRoots.map((root, index) => (
             <div
               key={root.id}
-              className="space-y-2 rounded-xl border border-border/75 bg-background/35 p-3"
+              className="space-y-3 rounded-lg border border-border bg-card p-4"
             >
-              <div className="grid gap-2 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2">
                 <Input
                   onChange={(event) =>
                     setDraft((prev) => {
@@ -340,7 +340,7 @@ function renderTaskForm(
                   value={root.description}
                 />
               </div>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <label className="flex items-center gap-3 text-xs text-muted-foreground">
                 <Checkbox
                   checked={root.allowReadWrite}
                   onChange={(event) =>
@@ -354,7 +354,7 @@ function renderTaskForm(
                     })
                   }
                 />
-                Read-write access
+                <span>Read-write access</span>
               </label>
             </div>
           ))}
@@ -428,31 +428,34 @@ export function MainDashboardView({
   const selectedStatus = getTaskStatus(snapshot, selectedTaskId);
 
   return (
-    <div className="tech-shell">
-      <header className="glass-panel animate-rise-in p-6 md:p-7">
+    <div className="heritage-shell">
+      <header className="animate-rise-in space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+          <p className="text-xs font-medium uppercase tracking-widest text-gold/80">
+            Configuration
+          </p>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+        </div>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-accent">
-              NanoClaw Dashboard
-            </p>
-            <h1 className="mt-2 text-3xl leading-tight text-foreground md:text-4xl">
-              Post-Setup Configuration Center
+            <h1 className="font-serif text-3xl text-foreground md:text-4xl">
+              Dashboard
             </h1>
-            <p className="mt-3 max-w-3xl text-sm text-muted-foreground md:text-base">
-              Setup is done. Configure integrations and optional capabilities from task
-              cards without blocking core dependency readiness.
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              Configure your assistant. Each task can be run independently.
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant={dependencyBadge}>
-              {snapshot.canRunCore ? 'Dependencies Ready' : 'Dependency Drift'}
+              {snapshot.canRunCore ? 'Ready' : 'Drift'}
             </Badge>
             <Button onClick={onRefreshSnapshot} size="sm" variant="secondary">
-              Refresh Dependencies
+              Refresh
             </Button>
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
           <span>Last check: {snapshot.generatedAt}</span>
           <span className="text-border">|</span>
           <span>
@@ -465,20 +468,20 @@ export function MainDashboardView({
       </header>
 
       {fatalError ? (
-        <div className="rounded-xl border border-danger/50 bg-danger/10 px-4 py-3 text-sm text-rose-200">
+        <div className="rounded-lg border border-burgundy/40 bg-burgundy/10 px-4 py-3 text-sm text-burgundy">
           {fatalError}
         </div>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[1.05fr_1fr]">
-        <Card className="animate-rise-in [animation-delay:80ms]">
-          <CardHeader>
-            <CardTitle>Configuration Task Cards</CardTitle>
+      <div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]">
+        <Card className="animate-rise-in">
+          <CardHeader className="border-b border-border/50">
+            <CardTitle>Configuration Tasks</CardTitle>
             <CardDescription>
-              Run any card independently. Failures affect only that task.
+              Select a task to configure. Failures are isolated.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3">
+          <CardContent className="grid gap-3 pt-6">
             {CONFIG_TASKS.map((task) => {
               const status = getTaskStatus(snapshot, task.id);
               const active = selectedTaskId === task.id;
@@ -486,33 +489,33 @@ export function MainDashboardView({
                 <button
                   key={task.id}
                   className={cn(
-                    'rounded-xl border p-4 text-left transition',
+                    'rounded-lg border p-4 text-left transition-all duration-200',
                     active
-                      ? 'border-cyan-300/70 bg-muted/70'
-                      : 'border-border/80 bg-background/45 hover:border-cyan-400/45',
+                      ? 'border-gold/50 bg-muted/40 shadow-sm'
+                      : 'border-border bg-card hover:border-gold/30 hover:bg-muted/20',
                   )}
                   onClick={() => onSelectTask(task.id)}
                   type="button"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <StatusBreathingDot status={status.dotStatus} />
-                      <p className="font-heading text-lg text-foreground">{task.title}</p>
+                      <p className="font-serif text-base text-foreground">{task.title}</p>
                     </div>
                     <Badge variant={status.badgeVariant}>
                       {status.ready ? 'Ready' : 'Pending'}
                     </Badge>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{task.summary}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">{status.label}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{task.summary}</p>
+                  <p className="mt-1 text-xs text-muted-foreground/70">{status.label}</p>
                 </button>
               );
             })}
           </CardContent>
         </Card>
 
-        <Card className="animate-rise-in [animation-delay:120ms]">
-          <CardHeader>
+        <Card className="animate-rise-in">
+          <CardHeader className="border-b border-border/50">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <CardTitle>
@@ -525,10 +528,10 @@ export function MainDashboardView({
               <Badge variant={selectedStatus.badgeVariant}>{selectedStatus.label}</Badge>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6 pt-6">
             {renderTaskForm(selectedTaskId, draft, snapshot, setDraft)}
             <Separator />
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               <Button disabled={busy} onClick={() => onRunTask(selectedTaskId, false)}>
                 {busy ? 'Running...' : 'Run Task'}
               </Button>
@@ -537,17 +540,17 @@ export function MainDashboardView({
                 onClick={() => onRunTask(selectedTaskId, true)}
                 variant="secondary"
               >
-                Retry Task
+                Retry
               </Button>
             </div>
 
             {selectedRuntime?.blockedReason ? (
-              <div className="rounded-xl border border-warning/45 bg-warning/10 p-4">
-                <p className="text-sm font-semibold text-warning-foreground">
+              <div className="rounded-lg border border-gold/40 bg-gold/10 p-4">
+                <p className="text-sm font-medium text-foreground">
                   {selectedRuntime.blockedReason}
                 </p>
                 {selectedRuntime?.manualCheckpoints?.length > 0 ? (
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-warning-foreground">
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
                     {selectedRuntime.manualCheckpoints.map((checkpoint) => (
                       <li key={checkpoint.id}>{checkpoint.title}</li>
                     ))}
@@ -559,19 +562,19 @@ export function MainDashboardView({
         </Card>
       </div>
 
-      <Card className="animate-rise-in [animation-delay:160ms]">
-        <CardHeader>
+      <Card className="animate-rise-in">
+        <CardHeader className="border-b border-border/50">
           <CardTitle>Execution Log</CardTitle>
-          <CardDescription>Shared logs for setup and dashboard actions.</CardDescription>
+          <CardDescription>Setup and task execution history.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <details className="group rounded-xl border border-border/75 bg-background/45 p-4">
-            <summary className="cursor-pointer text-sm font-semibold text-foreground">
-              Toggle logs ({logs.length})
+        <CardContent className="pt-6">
+          <details className="group rounded-lg border border-border bg-card p-4">
+            <summary className="cursor-pointer text-sm font-medium text-foreground">
+              View logs ({logs.length} entries)
             </summary>
-            <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-2">
+            <div className="mt-4 max-h-64 space-y-3 overflow-y-auto pr-2 font-mono text-sm">
               {logs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No logs yet.</p>
+                <p className="text-sm text-muted-foreground italic">No logs yet.</p>
               ) : (
                 logs
                   .slice()
@@ -580,13 +583,13 @@ export function MainDashboardView({
                   .map((entry, index) => (
                     <article
                       key={`${entry.timestamp}-${index}-${entry.message}`}
-                      className="rounded-lg border border-border/80 bg-card/45 px-3 py-2"
+                      className="rounded border border-border/50 bg-muted/30 px-4 py-3"
                     >
                       <p className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                        <span>{entry.timestamp}</span>
-                        <span className="uppercase tracking-[0.1em]">{entry.stepId}</span>
+                        <span className="font-mono">{entry.timestamp}</span>
+                        <span className="text-xs font-medium uppercase tracking-wider text-gold/70">{entry.stepId}</span>
                       </p>
-                      <p className="mt-1 text-sm text-foreground">{entry.message}</p>
+                      <p className="mt-2 text-sm text-foreground">{entry.message}</p>
                     </article>
                   ))
               )}

@@ -4,24 +4,26 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45',
+  'inline-flex items-center justify-center whitespace-nowrap rounded text-sm font-medium tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
-          'bg-accent text-accent-foreground shadow-glow hover:bg-accent/85',
+          'bg-navy text-white shadow-sm hover:bg-navy-light hover:shadow',
         secondary:
-          'bg-card text-foreground border border-border hover:border-accent/60 hover:bg-muted/80',
+          'bg-transparent text-foreground border border-border hover:bg-muted/50 hover:border-muted-foreground/30',
         outline:
-          'bg-background border border-border hover:bg-muted/60 hover:text-accent',
-        ghost: 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          'bg-transparent border border-border hover:bg-muted/30 hover:border-gold/50',
+        ghost: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
         destructive:
-          'bg-danger text-danger-foreground hover:bg-danger/90 shadow-[0_0_0_1px_rgba(244,63,94,0.3)]',
+          'bg-burgundy text-white hover:bg-burgundy-light shadow-sm',
+        gold:
+          'bg-gradient-to-r from-gold to-gold-muted text-white shadow-sm hover:shadow hover:from-gold/90 hover:to-gold-muted/90',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-8 rounded-lg px-3 text-xs',
-        lg: 'h-11 px-6 text-sm',
+        default: 'h-10 px-5 py-2',
+        sm: 'h-8 rounded px-4 text-xs tracking-wider',
+        lg: 'h-11 px-8 text-sm',
         icon: 'h-10 w-10',
       },
     },

@@ -11,13 +11,13 @@ export function Progress({ value, className, ...props }: ProgressProps): JSX.Ele
   return (
     <div
       className={cn(
-        'relative h-2 w-full overflow-hidden rounded-full bg-muted',
+        'relative h-1.5 w-full overflow-hidden rounded-full bg-border',
         className,
       )}
       {...props}
     >
       <div
-        className="h-full bg-gradient-to-r from-cyan-300 via-cyan-400 to-cyan-500 transition-all duration-500"
+        className="h-full bg-gradient-to-r from-navy via-navy-light to-gold/80 transition-all duration-500"
         style={{ width: `${safeValue}%` }}
       />
     </div>
